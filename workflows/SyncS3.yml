@@ -1,0 +1,40 @@
+name: Upload/Download S3 File 
+
+on: 
+  push: 
+    branches: [main]
+  pull_request: 
+    branches: [main]
+
+permissions: 
+  contents: write 
+
+env:
+  COMMIT_MSG: 'Fetched file from S3'
+  STEP_NAME: 'Get notes.md from S3'
+  DESTINATION: ./data/
+
+jobs: 
+  build:
+    runs-on: ubuntu-latest 
+
+    steps:
+      - uses: actions/checkout@v2 
+      - uses: keithweaver/aws-s3-github-action@v1.0.0 
+        name: $STEP_NAME
+        with:   
+          command: sync 
+          source: ${{ secrets.S3_BUCKET }}
+          destination: $DESTINATION
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ secrets.AWS_REGION }}
+          flags: --delete
+
+      - name: Commit Changes 
+        run: | 
+          git config --local user.email "action@github.com"
+          git config --local user.name "Github Action"
+          git add . 
+          git diff-index --quiet HEAD || git commit -m "$COMMIT_MSG" -a 
+          git push origin main:main 
